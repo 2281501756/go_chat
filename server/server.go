@@ -2,7 +2,6 @@ package server
 
 import (
 	"fmt"
-	"io"
 	"net"
 	"sync"
 )
@@ -46,14 +45,8 @@ func (this *Server) Start() {
 	}
 }
 func (this *Server) Handle(conn net.Conn) {
-	user := NewUser(conn)
-	fmt.Println(user.name, "上线")
-	this.mapLock.Lock()
-	this.OnlineMap[user.name] = user
-	this.mapLock.Unlock()
-	this.BroadCast(user, "上线")
-	go this.ListenUserInputData(user)
-
+	user := NewUser(conn, this)
+	user.Online()
 }
 
 func (this *Server) BroadCast(user *User, message string) {
@@ -68,22 +61,5 @@ func (this *Server) ListenMessage() {
 			user.C <- msg
 		}
 		this.mapLock.Unlock()
-	}
-}
-func (this *Server) ListenUserInputData(user *User) {
-	but := make([]byte, 4096)
-	for {
-		n, err := user.conn.Read(but)
-		if n == 0 {
-			this.BroadCast(user, "下线了")
-			return
-		}
-		if err != nil && err != io.EOF {
-			fmt.Println("conn read err:", err)
-			return
-		}
-		msg := string(but[:n-1])
-		this.BroadCast(user, msg)
-
 	}
 }
